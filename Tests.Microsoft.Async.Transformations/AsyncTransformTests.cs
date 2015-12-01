@@ -458,6 +458,108 @@ namespace Tests.Microsoft.Async.Transformations
         }
 
         [TestMethod]
+        public async Task AsyncTransform_Switch_Fast()
+        {
+            var enter = new AutoResetEvent(false);
+            var exit = new AutoResetEvent(false);
+
+            var count = 0;
+            var asyncFunc = Identity(async token =>
+            {
+                await Task.Yield();
+                enter.Set();
+                exit.WaitOne();
+                if (!token.IsCancellationRequested)
+                {
+                    count++;
+                }
+                await Task.FromResult(false);
+            });
+
+            using (var disposableAction = asyncFunc.Switch())
+            {
+                var @switch = Identity(disposableAction.InvokeAsync);
+                var task1 = @switch(CancellationToken.None);
+                enter.WaitOne();
+                exit.Set();
+                await task1;
+                Assert.AreEqual(1, count);
+
+                var task2 = @switch(CancellationToken.None);
+                enter.WaitOne();
+
+                var tasks = new List<Task>
+                {
+                    @switch(CancellationToken.None),
+                    @switch(CancellationToken.None),
+                };
+
+                exit.Set();
+                await task2;
+                Assert.AreEqual(1, count);
+
+                while (tasks.Count > 0)
+                {
+                    enter.WaitOne();
+                    exit.Set();
+                    var anyTask = await Task.WhenAny(tasks);
+                    tasks.Remove(anyTask);
+                    await anyTask;
+                }
+
+                Assert.IsTrue(count >= 2);
+            }
+        }
+
+        [TestMethod]
+        public async Task AsyncTransform_Switch_Multiple()
+        {
+            var count = 2;
+
+            var enters = Create(() => new ManualResetEvent(false), count);
+            var exits = Create(() => new ManualResetEvent(false), count);
+            var cancelFlags = Enumerable.Repeat(false, count).ToList();
+            var tasks = enters.Select((enter, i) => Identity(async token =>
+            {
+                await Task.Yield();
+                enter.Set();
+                exits[i].WaitOne();
+                cancelFlags[i] = token.IsCancellationRequested;
+            })).ToArray();
+
+            var switchedTasks = Switch(tasks);
+
+            exits[0].Set();
+            await switchedTasks[0](CancellationToken.None);
+            enters[0].WaitOne();
+            Assert.IsFalse(cancelFlags[0]);
+
+            var t0 = switchedTasks[0](CancellationToken.None);
+            enters[0].WaitOne();
+            var t1 = switchedTasks[1](CancellationToken.None);
+            enters[1].WaitOne();
+            exits[0].Set();
+            await t0;
+            Assert.IsTrue(cancelFlags[0]);
+            exits[1].Set();
+            await t1;
+            Assert.IsFalse(cancelFlags[1]);
+
+            cancelFlags[0] = false;
+
+            var t0a = switchedTasks[0](CancellationToken.None);
+            enters[0].WaitOne();
+            var t0b = switchedTasks[0](CancellationToken.None);
+            enters[0].WaitOne();
+            exits[0].Set();
+            await Task.WhenAny(t0a, t0b);
+            exits[0].Set();
+            await t0a;
+            await t0b;
+            Assert.IsFalse(cancelFlags[0]);
+        }
+
+        [TestMethod]
         public async Task AsyncTransform_Take()
         {
             var count = 0;
@@ -625,6 +727,11 @@ namespace Tests.Microsoft.Async.Transformations
         private static Func<T, CancellationToken, Task> Uncurry<T>(Func<CancellationToken, Task> asyncFunc)
         {
             return (_, token) => asyncFunc(token);
+        }
+
+        private static IList<T> Create<T>(Func<T> factory, int count)
+        {
+            return Enumerable.Repeat(factory, count).Select(f => f()).ToList();
         }
     }
 }

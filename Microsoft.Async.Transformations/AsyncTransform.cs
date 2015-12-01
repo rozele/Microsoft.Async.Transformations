@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Threading;
@@ -810,6 +811,45 @@ namespace Microsoft.Async.Transformations
                     }
                 },
                 serialDisposable);
+        }
+
+        /// <summary>
+        /// Convert a set of asynchronous functions into asynchronous functions
+        /// that cancel any current activity prior to running.
+        /// </summary>
+        /// <param name="asyncFuncList">
+        /// A collection of asynchronous functions.
+        /// </param>
+        /// <returns>
+        /// The transformed collection of asynchronous functions.
+        /// </returns>
+        public static IList<Func<CancellationToken, Task>> Switch(params Func<CancellationToken, Task>[] asyncFuncList)
+        {
+            Requires(asyncFuncList, nameof(asyncFuncList));
+            var resultList = new List<Func<CancellationToken, Task>>(asyncFuncList.Length);
+            resultList.AddRange(Switch((IEnumerable<Func<CancellationToken, Task>>)asyncFuncList));
+            return resultList;
+        }
+
+        /// <summary>
+        /// Convert a set of asynchronous functions into asynchronous functions
+        /// that cancel any current activity prior to running.
+        /// </summary>
+        /// <param name="asyncFuncCollection">
+        /// A collection of asynchronous functions.
+        /// </param>
+        /// <returns>
+        /// The transformed collection of asynchronous functions.
+        /// </returns>
+        public static IEnumerable<Func<CancellationToken, Task>> Switch(IEnumerable<Func<CancellationToken, Task>> asyncFuncCollection)
+        {
+            Requires(asyncFuncCollection, nameof(asyncFuncCollection));
+
+            var switchBlock = new SwitchBlock();
+            foreach (var asyncFunc in asyncFuncCollection)
+            {
+                yield return switchBlock.Add(asyncFunc);
+            }
         }
 
         #endregion

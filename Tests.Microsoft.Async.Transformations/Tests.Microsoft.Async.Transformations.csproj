@@ -62,7 +62,6 @@
     <Compile Include="AssertEx.cs" />
     <Compile Include="AsyncTransformTests.ArgumentChecks.cs" />
     <Compile Include="AsyncTransformTests.cs" />
-    <Compile Include="AsyncTransformTests.ManOrBoy.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

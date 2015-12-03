@@ -1,6 +1,7 @@
 ﻿using Microsoft.Async.Transformations;
 using Microsoft.Async.Transformations.Windows;
 using System;
+using System.Reactive.Disposables;
 using System.Threading;
 using System.Threading.Tasks;
 using Windows.UI.Xaml.Controls;
@@ -16,7 +17,7 @@ namespace Playground.App
     /// </summary>
     public sealed partial class MainPage : Page
     {
-        private readonly Func<CancellationToken, Task> _resetAsync;
+        private readonly DisposableAsyncFunction _resetAsync;
         private readonly DisposableAsyncFunction _restartAsync;
         private readonly DisposableAsyncFunction _startStopAsync;
 
@@ -28,11 +29,11 @@ namespace Playground.App
             var resetCoreAsync = Identity(Context.ResetAsync);
             var restartCoreAsync = Identity(Context.RestartAsync).Switch();
             var startStopCoreAsync = Identity(Context.RunAsync).Toggle();
-            var asyncFuncList = Switch(resetCoreAsync, restartCoreAsync.InvokeAsync, startStopCoreAsync.InvokeAsync);
+            var asyncFuncList = SwitchMany(resetCoreAsync, restartCoreAsync.InvokeAsync, startStopCoreAsync.InvokeAsync);
 
             _resetAsync = asyncFuncList[0];
-            _restartAsync = new DisposableAsyncFunction(asyncFuncList[1], restartCoreAsync);
-            _startStopAsync = new DisposableAsyncFunction(asyncFuncList[2], startStopCoreAsync);
+            _restartAsync = new DisposableAsyncFunction(asyncFuncList[1].InvokeAsync, new CompositeDisposable(asyncFuncList[1], restartCoreAsync));
+            _startStopAsync = new DisposableAsyncFunction(asyncFuncList[2].InvokeAsync, new CompositeDisposable(asyncFuncList[2], startStopCoreAsync));
         }
 
         public StopwatchContext Context { get; } = new StopwatchContext();
@@ -49,7 +50,7 @@ namespace Playground.App
 
         private async void ResetButton_Click(object sender, Windows.UI.Xaml.RoutedEventArgs e)
         {
-            await _resetAsync(CancellationToken.None);
+            await _resetAsync.InvokeAsync(CancellationToken.None);
         }
     }
 }

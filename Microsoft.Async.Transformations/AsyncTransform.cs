@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Threading;
@@ -606,6 +607,8 @@ namespace Microsoft.Async.Transformations
         /// </remarks>
         public static Func<CancellationToken, Task> Sequence(Func<CancellationToken, Task> asyncFunc)
         {
+            Requires(asyncFunc, nameof(asyncFunc));
+
             var activeTask = default(Task);
 
             return async token =>
@@ -769,39 +772,51 @@ namespace Microsoft.Async.Transformations
         /// </remarks>
         public static DisposableAsyncFunction Switch(Func<CancellationToken, Task> asyncFunc)
         {
+            Requires(asyncFunc, nameof(asyncFunc));
+
             var gate = new object();
             var serialDisposable = new SerialDisposable();
             var activeTask = default(Task);
-            var activeToken = default(CancellationTokenSource);
 
-            return Create(
+            return new DisposableAsyncFunction(
                 async token =>
                 {
                     var currentTask = new TaskCompletionSource<bool>();
-                    var currentToken = new CancellationTokenSource();
+                    var currentToken = new CancellationDisposable();
 
                     var lastTask = default(Task);
-                    var lastToken = default(CancellationTokenSource);
 
                     lock (gate)
                     {
                         lastTask = Interlocked.Exchange(ref activeTask, currentTask.Task);
-                        lastToken = Interlocked.Exchange(ref activeToken, currentToken);
-                    }
-
-                    if (lastTask != null)
-                    {
-                        lastToken.Cancel();
-                        await lastTask.ConfigureAwait(false);
                     }
 
                     serialDisposable.Disposable = currentToken;
 
+                    if (lastTask != null)
+                    {
+                        await lastTask.ConfigureAwait(false);
+                    }
+
                     try
                     {
-                        using (token.Register(currentToken.Cancel))
+                        using (token.Register(currentToken.Dispose))
                         {
                             await asyncFunc(currentToken.Token).ConfigureAwait(false);
+                        }
+                    }
+                    catch (OperationCanceledException ex)
+                    {
+                        if (ex.CancellationToken != currentToken.Token)
+                        {
+                            throw;
+                        }
+
+                        token.ThrowIfCancellationRequested();
+
+                        if (serialDisposable.IsDisposed)
+                        {
+                            throw new ObjectDisposedException("Switch");
                         }
                     }
                     finally
@@ -813,6 +828,10 @@ namespace Microsoft.Async.Transformations
                 serialDisposable);
         }
 
+        #endregion
+
+        #region SwitchMany
+
         /// <summary>
         /// Convert a set of asynchronous functions into asynchronous functions
         /// that cancel any current activity prior to running.
@@ -823,11 +842,12 @@ namespace Microsoft.Async.Transformations
         /// <returns>
         /// The transformed collection of asynchronous functions.
         /// </returns>
-        public static IList<Func<CancellationToken, Task>> Switch(params Func<CancellationToken, Task>[] asyncFuncList)
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1062:Validate arguments of public methods", MessageId = "0", Justification = "Checked by Requires helper.")]
+        public static IList<DisposableAsyncFunction> SwitchMany(params Func<CancellationToken, Task>[] asyncFuncList)
         {
             Requires(asyncFuncList, nameof(asyncFuncList));
-            var resultList = new List<Func<CancellationToken, Task>>(asyncFuncList.Length);
-            resultList.AddRange(Switch((IEnumerable<Func<CancellationToken, Task>>)asyncFuncList));
+            var resultList = new List<DisposableAsyncFunction>(asyncFuncList.Length);
+            resultList.AddRange(SwitchMany((IEnumerable<Func<CancellationToken, Task>>)asyncFuncList));
             return resultList;
         }
 
@@ -841,14 +861,37 @@ namespace Microsoft.Async.Transformations
         /// <returns>
         /// The transformed collection of asynchronous functions.
         /// </returns>
-        public static IEnumerable<Func<CancellationToken, Task>> Switch(IEnumerable<Func<CancellationToken, Task>> asyncFuncCollection)
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1006:DoNotNestGenericTypesInMemberSignatures", Justification = "The entire library revolves around the inner generic, so don't worry about it.")]
+        public static IEnumerable<DisposableAsyncFunction> SwitchMany(IEnumerable<Func<CancellationToken, Task>> asyncFuncCollection)
         {
             Requires(asyncFuncCollection, nameof(asyncFuncCollection));
+
+            var asyncFuncList = asyncFuncCollection.AsList();
+            var count = asyncFuncList.Count;
 
             var switchBlock = new SwitchBlock();
             foreach (var asyncFunc in asyncFuncCollection)
             {
-                yield return switchBlock.Add(asyncFunc);
+                var disposable = new SingleAssignmentDisposable();
+                disposable.Disposable = Disposable.Create(() =>
+                {
+                    if (Interlocked.Decrement(ref count) == 0)
+                    {
+                        switchBlock.Dispose();
+                    }
+                });
+
+                var switchedAsyncFunc = switchBlock.Add(asyncFunc);
+
+                yield return new DisposableAsyncFunction(token =>
+                {
+                    if (disposable.IsDisposed)
+                    {
+                        throw new ObjectDisposedException("SwitchMany");
+                    }
+
+                    return switchedAsyncFunc(token);
+                }, disposable);
             }
         }
 
@@ -947,6 +990,8 @@ namespace Microsoft.Async.Transformations
         /// <returns>An asynchronous function.</returns>
         public static Func<CancellationToken, Task> Throw(Exception exception)
         {
+            Requires(exception, nameof(exception));
+
             return _ =>
             {
                 throw exception;
@@ -1014,26 +1059,43 @@ namespace Microsoft.Async.Transformations
 
             var invalidGate = default(object);
             var tokenGate = new object();
-            var cancellationTokenSource = default(CancellationTokenSource);
+            var tokenDisposable = default(CancellationDisposable);
             var serialDisposable = new SerialDisposable();
 
-            return Create(
+            return new DisposableAsyncFunction(
                 Exclusive(async token =>
                 {
                     lock (tokenGate)
                     {
-                        cancellationTokenSource = new CancellationTokenSource();
-                        serialDisposable.Disposable = cancellationTokenSource;
+                        tokenDisposable = new CancellationDisposable();
+                        serialDisposable.Disposable = tokenDisposable;
                     }
 
-                    using (token.Register(cancellationTokenSource.Cancel))
+                    try
                     {
-                        await asyncFunc(cancellationTokenSource.Token).ConfigureAwait(false);
+                        using (token.Register(tokenDisposable.Dispose))
+                        {
+                            await asyncFunc(tokenDisposable.Token).ConfigureAwait(false);
+                        }
+                    }
+                    catch (OperationCanceledException ex)
+                    {
+                        if (ex.CancellationToken != tokenDisposable.Token)
+                        {
+                            throw;
+                        }
+
+                        token.ThrowIfCancellationRequested();
+
+                        if (serialDisposable.IsDisposed)
+                        {
+                            throw new ObjectDisposedException("Toggle");
+                        }
                     }
 
                     lock (tokenGate)
                     {
-                        cancellationTokenSource = null;
+                        tokenDisposable = null;
                         invalidGate = null;
                     }
                 },
@@ -1042,9 +1104,9 @@ namespace Microsoft.Async.Transformations
                     var cancelled = false;
                     lock (tokenGate)
                     {
-                        if (Interlocked.CompareExchange(ref invalidGate, new object(), null) == null && cancellationTokenSource != null)
+                        if (Interlocked.CompareExchange(ref invalidGate, new object(), null) == null && tokenDisposable != null)
                         {
-                            cancellationTokenSource.Cancel();
+                            tokenDisposable.Dispose();
                             cancelled = true;
                         }
                     }
@@ -1071,15 +1133,21 @@ namespace Microsoft.Async.Transformations
             return (arg, token) => asyncFunc(token);
         }
 
-        private static DisposableAsyncFunction Create(Func<CancellationToken, Task> asyncFunc, IDisposable disposable)
-        {
-            return new DisposableAsyncFunction(asyncFunc, disposable);
-        }
-
         private static void Requires<T>(T value, string paramName)
         {
             if (value == null)
                 throw new ArgumentNullException(paramName);
+        }
+
+        private static IList<T> AsList<T>(this IEnumerable<T> source)
+        {
+            var list = source as IList<T>;
+            if (list != null)
+            {
+                return list;
+            }
+
+            return source.ToList();
         }
 
         #endregion

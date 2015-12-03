@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Reactive.Disposables;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -12,15 +13,13 @@ namespace Microsoft.Async.Transformations
     /// of actions is interrupted by a different action, the entire sequence is
     /// cancelled and the interrupting action will begin. 
     /// </summary>
-    /// <remarks>
-    /// TODO: Make disposable and add ref-counting mechanism
-    /// </remarks>
-    public class SwitchBlock
+    public sealed class SwitchBlock : IDisposable
     {
         private readonly object _gate = new object();
+        private readonly SerialDisposable _serialDisposable = new SerialDisposable();
 
         private object _active;
-        private CancellationTokenSource _cancelSwitch;
+        private CancellationDisposable _cancelSwitch;
         private Task _currentTask;
 
         /// <summary>
@@ -45,7 +44,7 @@ namespace Microsoft.Async.Transformations
             // Local variables for the switch state.
             var active = default(object);
             var currentTask = default(Task);
-            var cancelSwitch = default(CancellationTokenSource);
+            var cancelSwitch = default(CancellationDisposable);
 
             // Enter the lock and update the switch state.
             lock (_gate)
@@ -55,7 +54,7 @@ namespace Microsoft.Async.Transformations
                 {
                     _active = active = current;
                     currentTask = _currentTask = doneTask;
-                    cancelSwitch = _cancelSwitch = new CancellationTokenSource();
+                    _serialDisposable.Disposable = cancelSwitch = _cancelSwitch = new CancellationDisposable();
                 }
                 // If the current call is the active kind, repeat and add a continuation.
                 else if (_active == current)
@@ -76,32 +75,58 @@ namespace Microsoft.Async.Transformations
             // If the current task is not active, cancel the active task and try again. 
             if (active != current)
             {
-                cancelSwitch.Cancel();
+                cancelSwitch.Dispose();
                 await currentTask;
                 await ExecuteAsync(current, action, token);
             }
             // Else, run the current task.
             else
             {
-                using (var localCancellationSource = new CancellationTokenSource())
-                using (cancelSwitch.Token.Register(localCancellationSource.Cancel))
-                using (token.Register(localCancellationSource.Cancel))
+                using (var localCancellationSource = new CancellationDisposable())
+                using (cancelSwitch.Token.Register(localCancellationSource.Dispose))
+                using (token.Register(localCancellationSource.Dispose))
                 {
-                    await action(localCancellationSource.Token);
-
-                    lock (_gate)
+                    try
                     {
-                        // If the current task is the final task, reset the active task.
-                        if (_currentTask == doneTask)
+                        await action(localCancellationSource.Token);
+                    }
+                    catch (OperationCanceledException ex)
+                    {
+                        if (ex.CancellationToken != localCancellationSource.Token)
                         {
-                            _active = null;
-                            _cancelSwitch.Dispose();
+                            throw;
+                        }
+
+                        token.ThrowIfCancellationRequested();
+
+                        if (_serialDisposable.IsDisposed)
+                        {
+                            throw new ObjectDisposedException("SwitchBlock");
                         }
                     }
+                    finally
+                    {
+                        lock (_gate)
+                        {
+                            // If the current task is the final task, reset the active task.
+                            if (_currentTask == doneTask)
+                            {
+                                _active = null;
+                            }
+                        }
 
-                    doneTaskSource.SetResult(true);
+                        doneTaskSource.SetResult(true);
+                    }
                 }
             }
+        }
+
+        /// <summary>
+        /// Disposes the switch block.
+        /// </summary>
+        public void Dispose()
+        {
+            _serialDisposable.Dispose();
         }
     }
 }

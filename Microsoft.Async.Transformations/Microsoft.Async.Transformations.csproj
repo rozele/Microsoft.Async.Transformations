@@ -47,7 +47,7 @@
   <ItemGroup>
     <Compile Include="AsyncTransform.cs" />
     <Compile Include="AsyncTransformExtensions.cs" />
-    <Compile Include="DisposableAsyncAction.cs" />
+    <Compile Include="DisposableAsyncFunction.cs" />
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SwitchBlock.cs" />

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
 using System.Threading.Tasks;
 
 namespace Tests.Microsoft.Async.Transformations
@@ -21,7 +22,10 @@ namespace Tests.Microsoft.Async.Transformations
             catch (T ex)
             {
                 assert(ex);
+                return;
             }
+
+            Assert.Fail("Expected exception of type '{0}'.", typeof(T));
         }
 
         public static async Task Throws<T>(Func<Task> action)
@@ -40,7 +44,10 @@ namespace Tests.Microsoft.Async.Transformations
             catch (T ex)
             {
                 assert(ex);
+                return;
             }
+
+            Assert.Fail("Expected exception of type '{0}'.", typeof(T));
         }
     }
 }

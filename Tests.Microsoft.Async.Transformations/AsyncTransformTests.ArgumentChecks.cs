@@ -1,6 +1,7 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using static Microsoft.Async.Transformations.AsyncTransform;
@@ -53,8 +54,8 @@ namespace Tests.Microsoft.Async.Transformations
             AssertEx.Throws<ArgumentNullException>(() => Skip(Empty(), -1, null), AssertName("rest"));
 
             AssertEx.Throws<ArgumentNullException>(() => Switch(default(Func<CancellationToken, Task>)), AssertName("asyncFunc"));
-            AssertEx.Throws<ArgumentNullException>(() => Switch(default(Func<CancellationToken, Task>[])), AssertName("asyncFuncList"));
-            AssertEx.Throws<ArgumentNullException>(() => Switch(default(IEnumerable<Func<CancellationToken, Task>>)), AssertName("asyncFuncCollection"));
+            AssertEx.Throws<ArgumentNullException>(() => SwitchMany(default(Func<CancellationToken, Task>[])), AssertName("asyncFuncList"));
+            AssertEx.Throws<ArgumentNullException>(() => SwitchMany(default(IEnumerable<Func<CancellationToken, Task>>)).ToArray(), AssertName("asyncFuncCollection"));
 
             AssertEx.Throws<ArgumentNullException>(() => Take(null, 0), AssertName("asyncFunc"));
             AssertEx.Throws<ArgumentOutOfRangeException>(() => Take(Empty(), -1), AssertName("count"));

@@ -206,8 +206,8 @@ namespace Tests.Microsoft.Async.Transformations
             var ex = new Exception();
             var test1 = Throw(ex).Finally(asyncFunc);
             var test2 = Empty().Finally(asyncFunc);
-            await AssertEx.Throws<Exception>(() => test1(CancellationToken.None));
-            await AssertEx.Throws<Exception>(() => test2(CancellationToken.None));
+            await AssertEx.Throws<Exception>(() => test1(CancellationToken.None), e => Assert.AreSame(ex, e));
+            await test2(CancellationToken.None);
             Assert.AreEqual(2, count);
         }
 
@@ -267,11 +267,8 @@ namespace Tests.Microsoft.Async.Transformations
         {
             using (var cts = new CancellationTokenSource())
             {
-                var mre = new ManualResetEvent(false);
-                var task = Never()(cts.Token).ContinueWith(_ => mre.Set());
-                Assert.IsFalse(mre.WaitOne(100));
+                var task = Never()(cts.Token);
                 cts.Cancel();
-
                 await AssertEx.Throws<OperationCanceledException>(
                     () => task,
                     ex => Assert.AreEqual(cts.Token, ex.CancellationToken));
@@ -512,31 +509,49 @@ namespace Tests.Microsoft.Async.Transformations
         }
 
         [TestMethod]
-        public async Task AsyncTransform_Switch_Multiple()
+        public async Task AsyncTransform_Switch_Never()
+        {
+            var toggle = Never().Switch();
+            var task1 = toggle.InvokeAsync(CancellationToken.None);
+            var task2 = toggle.InvokeAsync(CancellationToken.None);
+            var task = await Task.WhenAny(task1, task2);
+            var otherTask = task == task1 ? task2 : task1;
+            toggle.Dispose();
+            await AssertEx.Throws<ObjectDisposedException>(() => otherTask);
+        }
+
+        [TestMethod]
+        public async Task AsyncTransform_SwitchMany_Multiple()
         {
             var count = 2;
 
-            var enters = Create(() => new ManualResetEvent(false), count);
-            var exits = Create(() => new ManualResetEvent(false), count);
+            var enters = Create(() => new AutoResetEvent(false), count);
+            var exits = Create(() => new AutoResetEvent(false), count);
             var cancelFlags = Enumerable.Repeat(false, count).ToList();
             var tasks = enters.Select((enter, i) => Identity(async token =>
             {
-                await Task.Yield();
                 enter.Set();
-                exits[i].WaitOne();
+
+                var tcs = new TaskCompletionSource<bool>();
+                using (token.Register(() => tcs.SetResult(false)))
+                {
+                    var task = Task.Run(() => { exits[i].WaitOne(); });
+                    await Task.WhenAny(task, tcs.Task);
+                }
+
                 cancelFlags[i] = token.IsCancellationRequested;
             })).ToArray();
 
-            var switchedTasks = Switch(tasks);
+            var switchedTasks = SwitchMany(tasks);
 
             exits[0].Set();
-            await switchedTasks[0](CancellationToken.None);
+            await switchedTasks[0].InvokeAsync(CancellationToken.None);
             enters[0].WaitOne();
             Assert.IsFalse(cancelFlags[0]);
 
-            var t0 = switchedTasks[0](CancellationToken.None);
+            var t0 = switchedTasks[0].InvokeAsync(CancellationToken.None);
             enters[0].WaitOne();
-            var t1 = switchedTasks[1](CancellationToken.None);
+            var t1 = switchedTasks[1].InvokeAsync(CancellationToken.None);
             enters[1].WaitOne();
             exits[0].Set();
             await t0;
@@ -547,9 +562,9 @@ namespace Tests.Microsoft.Async.Transformations
 
             cancelFlags[0] = false;
 
-            var t0a = switchedTasks[0](CancellationToken.None);
+            var t0a = switchedTasks[0].InvokeAsync(CancellationToken.None);
             enters[0].WaitOne();
-            var t0b = switchedTasks[0](CancellationToken.None);
+            var t0b = switchedTasks[0].InvokeAsync(CancellationToken.None);
             enters[0].WaitOne();
             exits[0].Set();
             await Task.WhenAny(t0a, t0b);
@@ -557,6 +572,51 @@ namespace Tests.Microsoft.Async.Transformations
             await t0a;
             await t0b;
             Assert.IsFalse(cancelFlags[0]);
+
+            switchedTasks.ToList().ForEach(d => d.Dispose());
+        }
+
+        [TestMethod]
+        public async Task AsyncTransform_SwitchMany_Cancellation()
+        {
+            var tasks = SwitchMany(Enumerable.Repeat(Never(), 1)).ToArray();
+            using (var cts = new CancellationTokenSource())
+            {
+                var task = tasks[0].InvokeAsync(cts.Token);
+                cts.Cancel();
+                await AssertEx.Throws<OperationCanceledException>(() => task, ex => Assert.AreEqual(cts.Token, ex.CancellationToken));
+            }
+        }
+
+        [TestMethod]
+        public async Task AsyncTransform_SwitchMany_Dispose()
+        {
+            var asyncFuncs = SwitchMany(Never(), Never());
+            asyncFuncs[0].Dispose();
+            await AssertEx.Throws<ObjectDisposedException>(() => asyncFuncs[0].InvokeAsync(CancellationToken.None));
+            var task = asyncFuncs[1].InvokeAsync(CancellationToken.None);
+            asyncFuncs[1].Dispose();
+            await AssertEx.Throws<ObjectDisposedException>(() => task);
+        }
+
+        [TestMethod]
+        public async Task AsyncTransform_SwitchMany_Exception()
+        {
+            var ex = new OperationCanceledException();
+            var asyncFuncs = SwitchMany(Throw(ex));
+            await AssertEx.Throws<OperationCanceledException>(() => asyncFuncs[0].InvokeAsync(CancellationToken.None), e => Assert.AreSame(ex, e));
+        }
+
+        [TestMethod]
+        public async Task AsyncTransform_SwitchMany_NoException()
+        {
+            var asyncFuncs = SwitchMany(Never(), Never()).ToList();
+            var t1 = asyncFuncs[0].InvokeAsync(CancellationToken.None);
+            var t2 = asyncFuncs[1].InvokeAsync(CancellationToken.None);
+            var task = await Task.WhenAny(t1, t2);
+            var otherTask = task == t1 ? t2 : t1;
+            asyncFuncs.ForEach(d => d.Dispose());
+            await AssertEx.Throws<ObjectDisposedException>(() => otherTask);
         }
 
         [TestMethod]
@@ -712,11 +772,30 @@ namespace Tests.Microsoft.Async.Transformations
         }
 
         [TestMethod]
+        public async Task AsyncTransform_Toggle_Never()
+        {
+            var toggle = Never().Toggle();
+            var task1 = toggle.InvokeAsync(CancellationToken.None);
+            var task2 = toggle.InvokeAsync(CancellationToken.None);
+            await Task.WhenAll(task1, task2);
+
+            // No exception implies success
+        }
+
+        [TestMethod]
         public async Task AsyncTransform_Toggle_Disposed()
         {
-            var toggle = Empty().Toggle();
+            var toggle = Never().Toggle();
             toggle.Dispose();
             await AssertEx.Throws<ObjectDisposedException>(() => toggle.InvokeAsync(CancellationToken.None));
+        }
+
+        [TestMethod]
+        public async Task AsyncTransform_Toggle_Exception()
+        {
+            var ex = new OperationCanceledException();
+            var asyncFunc = Throw(ex).Toggle();
+            await AssertEx.Throws<OperationCanceledException>(() => asyncFunc.InvokeAsync(CancellationToken.None), e => Assert.AreSame(ex, e));
         }
 
         private static Action<ArgumentException> AssertName(string paramName)

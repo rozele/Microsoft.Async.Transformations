@@ -9,9 +9,9 @@ For example, one of the transformations, `Switch`, creates an asynchronous funct
 The example included in Playground.App is a simple stopwatch application intended to demonstrate some of the interesting transformations.
 
 The stopwatch has 3 basic functions:
-1. A toggle switch to start and pause the stopwatch.
-2. A reset button to reset the stopwatch.
-3. A restart button to restart the stopwatch.
+  1. A toggle switch to start and pause the stopwatch.
+  2. A reset button to reset the stopwatch.
+  3. A restart button to restart the stopwatch.
 
 All of the functionality is implemented from a dead simple asynchronous function that waits one second, then calls a "tick" function, until the loop is cancelled by the input cancellation token. Here's the code:
 

@@ -4,6 +4,15 @@ A set of higher-order functions, which transform asynchronous functions of the f
 
 For example, one of the transformations, `Switch`, creates an asynchronous function where each time it is called, it cancels the previous call.
 
+# Usage
+
+Install the [NuGet package](http://nuget.org) (sorry, not yet available) using your favorite NuGet tools.
+
+As a matter of convenience, we've created both static methods and extension methods for most of the transformations where it made sense to do so. To use the extension methods, be sure to include the `Microsoft.Async.Transformation` namespace.The extension methods are available in `Microsoft.Async.Transformations.AsyncTransformExtensions` and the non-extension static methods are in `Microsoft.Async.Transformations.AsyncTransform`. In the example app and the code snippets below, we leverage the "Using Static" feature from C# 6.0 (see more [here](https://msdn.microsoft.com/en-us/magazine/dn879355.aspx)), i.e.:
+```
+using static Microsoft.Async.Transformations.AsyncTransform;
+```
+
 # Example
 
 The example included in Playground.App is a simple stopwatch application intended to demonstrate some of the interesting transformations.

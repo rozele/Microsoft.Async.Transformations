@@ -75,3 +75,6 @@ The point is, there are many cases in XAML applications where you want to implem
 
 ## Dependencies
 * [Rx.NET](https://github.com/Reactive-Extensions/Rx.NET)
+
+## Contributions
+Contributions are awesome! If you want to help out, fix a bug, or get a feature fixed - check out the [contributing guide](CONTRIBUTING.md). 

@@ -1,9 +1,6 @@
 ﻿using Microsoft.Async.Transformations;
-using Microsoft.Async.Transformations.Windows;
-using System;
 using System.Reactive.Disposables;
 using System.Threading;
-using System.Threading.Tasks;
 using Windows.UI.Xaml.Controls;
 
 using static Microsoft.Async.Transformations.AsyncTransform;

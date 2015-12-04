@@ -8,13 +8,29 @@ using static Microsoft.Async.Transformations.AsyncTransform;
 
 namespace Microsoft.Async.Transformations.Windows
 {
+    /// <summary>
+    /// A set of transformations for asynchronous functions specific to Windows.
+    /// </summary>
     public static class AsyncTransform
     {
+        /// <summary>
+        /// Converts a asynchronous function into one that is guaranteed to be 
+        /// called on a dispatcher thread.
+        /// </summary>
+        /// <param name="asyncFunc">The asynchronous function.</param>
+        /// <returns>The transformed asynchronous function.</returns>
         public static Func<CancellationToken, Task> OnDispatcher(Func<CancellationToken, Task> asyncFunc)
         {
             return OnDispatcher(asyncFunc, CoreDispatcherPriority.Normal);
         }
 
+        /// <summary>
+        /// Converts a asynchronous function into one that is guaranteed to be 
+        /// called on a dispatcher thread.
+        /// </summary>
+        /// <param name="asyncFunc">The asynchronous function.</param>
+        /// <param name="priority">The dispatcher priority.</param>
+        /// <returns>The transformed asynchronous function.</returns>
         public static Func<CancellationToken, Task> OnDispatcher(Func<CancellationToken, Task> asyncFunc, CoreDispatcherPriority priority)
         {
             var dispatcher = Window.Current?.Dispatcher;
@@ -48,16 +64,6 @@ namespace Microsoft.Async.Transformations.Windows
                     await taskCompletionSource.Task.ConfigureAwait(false);
                 }
             };
-        }
-
-        public static DisposableAsyncFunction OnDispatcher(DisposableAsyncFunction asyncFunc)
-        {
-            return OnDispatcher(asyncFunc, CoreDispatcherPriority.Normal);
-        }
-
-        public static DisposableAsyncFunction OnDispatcher(DisposableAsyncFunction asyncFunc, CoreDispatcherPriority priority)
-        {
-            return new DisposableAsyncFunction(OnDispatcher(Identity(asyncFunc.InvokeAsync), priority), asyncFunc);
         }
     }
 }

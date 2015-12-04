@@ -201,6 +201,7 @@
           "lib/dotnet/Microsoft.Win32.Primitives.dll": {}
         }
       },
+      "NuSpec.ReferenceGenerator/1.4.0": {},
       "Rx-Core/2.2.5": {
         "dependencies": {
           "Rx-Interfaces": "[2.2.5, )"
@@ -1798,6 +1799,7 @@
           "lib/dotnet/Microsoft.Win32.Primitives.dll": {}
         }
       },
+      "NuSpec.ReferenceGenerator/1.4.0": {},
       "Rx-Core/2.2.5": {
         "dependencies": {
           "Rx-Interfaces": "[2.2.5, )"
@@ -3428,6 +3430,7 @@
           "lib/dotnet/Microsoft.Win32.Primitives.dll": {}
         }
       },
+      "NuSpec.ReferenceGenerator/1.4.0": {},
       "Rx-Core/2.2.5": {
         "dependencies": {
           "Rx-Interfaces": "[2.2.5, )"
@@ -5063,6 +5066,7 @@
           "lib/dotnet/Microsoft.Win32.Primitives.dll": {}
         }
       },
+      "NuSpec.ReferenceGenerator/1.4.0": {},
       "Rx-Core/2.2.5": {
         "dependencies": {
           "Rx-Interfaces": "[2.2.5, )"
@@ -6693,6 +6697,7 @@
           "lib/dotnet/Microsoft.Win32.Primitives.dll": {}
         }
       },
+      "NuSpec.ReferenceGenerator/1.4.0": {},
       "Rx-Core/2.2.5": {
         "dependencies": {
           "Rx-Interfaces": "[2.2.5, )"
@@ -8328,6 +8333,7 @@
           "lib/dotnet/Microsoft.Win32.Primitives.dll": {}
         }
       },
+      "NuSpec.ReferenceGenerator/1.4.0": {},
       "Rx-Core/2.2.5": {
         "dependencies": {
           "Rx-Interfaces": "[2.2.5, )"
@@ -9958,6 +9964,7 @@
           "lib/dotnet/Microsoft.Win32.Primitives.dll": {}
         }
       },
+      "NuSpec.ReferenceGenerator/1.4.0": {},
       "Rx-Core/2.2.5": {
         "dependencies": {
           "Rx-Interfaces": "[2.2.5, )"
@@ -11998,6 +12005,21 @@
         "ref/xamarinios10/_._",
         "ref/xamarinmac20/_._",
         "package/services/metadata/core-properties/1d4eb9d0228b48b88d2df3822fba2d86.psmdcp",
+        "[Content_Types].xml"
+      ]
+    },
+    "NuSpec.ReferenceGenerator/1.4.0": {
+      "sha512": "JYSSXNmvbYmEruapORYhLpztLzfaKwsoOwNu6J1fsBRHLc/hhIEwqpQyhyN4ddKLXBoGrUf+WhviCJRimgjpOQ==",
+      "type": "Package",
+      "files": [
+        "_rels/.rels",
+        "NuSpec.ReferenceGenerator.nuspec",
+        "build/dotnet/NuSpec.ReferenceGenerator.targets",
+        "build/portable-net45+win+wpa81+wp80+MonoAndroid10+xamarinios10+MonoTouch10/NuSpec.ReferenceGenerator.targets",
+        "tools/RefGen.exe",
+        "tools/RefGen.exe.config",
+        "tools/RefGen.pdb",
+        "package/services/metadata/core-properties/d386ffd094ea474dbec1e7fd53c81618.psmdcp",
         "[Content_Types].xml"
       ]
     },
@@ -14759,7 +14781,8 @@
   },
   "projectFileDependencyGroups": {
     "": [
-      "Microsoft.NETCore.UniversalWindowsPlatform >= 5.0.0"
+      "Microsoft.NETCore.UniversalWindowsPlatform >= 5.0.0",
+      "NuSpec.ReferenceGenerator >= 1.4.0"
     ],
     "UAP,Version=v10.0": []
   }

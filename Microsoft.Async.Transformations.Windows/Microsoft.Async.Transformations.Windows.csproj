@@ -110,7 +110,14 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- A reference to the entire .Net Framework and Windows SDK are automatically included -->
+    <None Include="Microsoft.Async.Transformations.Windows.nuspec" />
     <None Include="project.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- example NuSpec file that must be specified -->
+    <NuSpecFile Include="Microsoft.Async.Transformations.Windows.nuspec">
+      <Visible>False</Visible>
+    </NuSpecFile>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AsyncTransform.cs" />

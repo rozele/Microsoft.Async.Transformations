@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+  <metadata minClientVersion="2.8.6">
+    <id>Microsoft.Async.Transformations.Windows</id>
+    <version>0.0.1</version>
+    <title>Microsoft.Async.Transformations.Windows</title>
+    <authors>rozele</authors>
+    <owners>rozele</owners>
+    <description>Additional functional transformations for Windows.</description>
+    <projectUrl>https://github.com/rozele/Microsoft.Async.Transformations</projectUrl>
+    <licenseUrl>https://github.com/rozele/Microsoft.Async.Transformations/blob/master/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>true</requireLicenseAcceptance>
+    <copyright>Copyright (c) Microsoft Corporation. All rights reserved.</copyright>
+    <tags>Microsoft Async Transformations Functional Windows UWP</tags>
+    <dependencies>
+      <group targetFramework="uap10.0">
+        <dependency id="Microsoft.Async.Transformations" version="0.0.1" />
+        <dependency id="System.Diagnostics.Debug" version="4.0.10" />
+        <dependency id="System.Runtime" version="4.0.20" />
+        <dependency id="System.Runtime.WindowsRuntime" version="4.0.10" />
+        <dependency id="System.Threading.Tasks" version="4.0.10" />
+      </group>
+    </dependencies>
+  </metadata>
+  <files>
+    <file target="lib\uap10.0\Microsoft.Async.Transformations.Windows.dll" src="bin\release\Microsoft.Async.Transformations.Windows.dll" />
+    <file target="lib\uap10.0\Microsoft.Async.Transformations.Windows.pdb" src="bin\release\Microsoft.Async.Transformations.Windows.pdb" />
+    <file target="lib\uap10.0\Microsoft.Async.Transformations.Windows.xml" src="bin\release\Microsoft.Async.Transformations.Windows.xml" />
+  </files>
+</package>

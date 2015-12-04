@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+  <metadata minClientVersion="2.8.6">
+    <id>Microsoft.Async.Transformations</id>
+    <version>0.0.1</version>
+    <title>Microsoft.Async.Transformations</title>
+    <authors>rozele</authors>
+    <owners>rozele</owners>
+    <description>Functional augmentations to transform asynchronous functions to include additional behavior.</description>
+    <projectUrl>https://github.com/rozele/Microsoft.Async.Transformations</projectUrl>
+    <licenseUrl>https://github.com/rozele/Microsoft.Async.Transformations/blob/master/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>true</requireLicenseAcceptance>
+    <copyright>Copyright (c) Microsoft Corporation. All rights reserved.</copyright>
+    <tags>Microsoft Async Transformations Functional</tags>
+    <dependencies>
+      <group targetFramework="dotnet">
+        <dependency id="Rx-Core" version="2.2.5" />
+        <dependency id="System.Collections" version="4.0.10" />
+        <dependency id="System.Diagnostics.Debug" version="4.0.10" />
+        <dependency id="System.Diagnostics.Tools" version="4.0.0" />
+        <dependency id="System.Linq" version="4.0.0" />
+        <dependency id="System.Resources.ResourceManager" version="4.0.0" />
+        <dependency id="System.Runtime" version="4.0.20" />
+        <dependency id="System.Runtime.Extensions" version="4.0.10" />
+        <dependency id="System.Threading" version="4.0.10" />
+        <dependency id="System.Threading.Tasks" version="4.0.10" />
+      </group>
+    </dependencies>
+  </metadata>
+  <files>
+    <file target="lib\portable-uap10.0+net46\Microsoft.Async.Transformations.dll" src="bin\release\Microsoft.Async.Transformations.dll" />
+    <file target="lib\portable-uap10.0+net46\Microsoft.Async.Transformations.pdb" src="bin\release\Microsoft.Async.Transformations.pdb" />
+    <file target="lib\portable-uap10.0+net46\Microsoft.Async.Transformations.xml" src="bin\release\Microsoft.Async.Transformations.xml" />
+  </files>
+</package>
